@@ -17,6 +17,7 @@ namespace GitCredentialManager.Tests.Objects
             Terminal = new TestTerminal();
             SessionManager = new TestSessionManager();
             Trace = new NullTrace();
+            Trace2 = new NullTrace2();
             FileSystem = new TestFileSystem();
             CredentialStore = new TestCredentialStore();
             HttpClientFactory = new TestHttpClientFactory();
@@ -33,15 +34,22 @@ namespace GitCredentialManager.Tests.Objects
         public TestTerminal Terminal { get; set; }
         public TestSessionManager SessionManager { get; set; }
         public ITrace Trace { get; set; }
+        public ITrace2 Trace2 { get; set; }
         public TestFileSystem FileSystem { get; set; }
         public TestCredentialStore CredentialStore { get; set; }
         public TestHttpClientFactory HttpClientFactory { get; set; }
         public TestGit Git { get; set; }
         public TestEnvironment Environment { get; set; }
 
+        public IProcessManager ProcessManager { get; set; }
+
         #region ICommandContext
 
-        string ICommandContext.ApplicationPath => AppPath;
+        string ICommandContext.ApplicationPath
+        {
+            get => AppPath;
+            set => AppPath = value;
+        }
 
         string ICommandContext.InstallationDirectory => InstallDir;
 

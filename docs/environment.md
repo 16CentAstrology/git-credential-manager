@@ -39,9 +39,9 @@ logs are appended to the file.
 
 If the value of `GCM_TRACE` is `true` or `1`, logs are written to standard error.
 
-Defaults to tracing disabled.
+Defaults to disabled.
 
-_No configuration equivalent._
+**Also see: [credential.trace][credential-trace]**
 
 ---
 
@@ -71,14 +71,14 @@ secret information.
 
 Defaults to disabled.
 
-_No configuration equivalent._
+**Also see: [credential.traceSecrets][credential-trace-secrets]**
 
 ---
 
 ### GCM_TRACE_MSAUTH
 
-Enables inclusion of Microsoft Authentication libraries (ADAL, MSAL) logs in GCM
-trace output. Requires that `GCM_TRACE` is also enabled.
+Enables inclusion of Microsoft Authentication library (MSAL) logs in GCM trace
+output. Requires that `GCM_TRACE` is also enabled.
 
 #### Example
 
@@ -97,11 +97,11 @@ export GCM_TRACE_MSAUTH=1
 ```
 
 If the value of `GCM_TRACE_MSAUTH` is `true` or `1`, trace logs will include
-verbose ADAL/MSAL logs.
+verbose MSAL logs.
 
 Defaults to disabled.
 
-_No configuration equivalent._
+**Also see: [credential.traceMsAuth][credential-trace-msauth]**
 
 ---
 
@@ -125,7 +125,7 @@ export GCM_DEBUG=1
 
 Defaults to disabled.
 
-_No configuration equivalent._
+**Also see: [credential.debug][credential-debug]**
 
 ---
 
@@ -269,6 +269,62 @@ export GCM_GUI_PROMPT=0
 Defaults to enabled.
 
 **Also see: [credential.guiPrompt][credential-guiprompt]**
+
+---
+
+### GCM_GUI_SOFTWARE_RENDERING
+
+Force the use of software rendering for GUI prompts.
+
+This is currently only applicable on Windows.
+
+#### Example
+
+##### Windows
+
+```batch
+SET GCM_GUI_SOFTWARE_RENDERING=1
+```
+
+##### macOS/Linux
+
+```bash
+export GCM_GUI_SOFTWARE_RENDERING=1
+```
+
+Defaults to false (use hardware acceleration where available).
+
+> [!NOTE]
+> Windows on ARM devices defaults to using software rendering to work around a
+> known Avalonia issue: <https://github.com/AvaloniaUI/Avalonia/issues/10405>
+
+**Also see: [credential.guiSoftwareRendering][credential-guisoftwarerendering]**
+
+---
+
+### GCM_ALLOW_UNSAFE_REMOTES
+
+Allow transmitting credentials to unsafe remote URLs such as unencrypted HTTP
+URLs. This setting is not recommended for general use and should only be used
+when necessary.
+
+Defaults false (disallow unsafe remote URLs).
+
+#### Example
+
+##### Windows
+
+```batch
+SET GCM_ALLOW_UNSAFE_REMOTES=true
+```
+
+##### macOS/Linux
+
+```bash
+export GCM_ALLOW_UNSAFE_REMOTES=true
+```
+
+**Also see: [credential.allowUnsafeRemotes][credential-allowunsaferemotes]**
 
 ---
 
@@ -525,6 +581,33 @@ Defaults to undefined.
 
 ---
 
+### GCM_GITHUB_ACCOUNTFILTERING
+
+Enable or disable automatic account filtering for GitHub based on server hints
+when there are multiple available accounts. This setting is only applicable to
+GitHub.com with [Enterprise Managed Users][github-emu].
+
+Value|Description
+-|-
+`true` _(default)_|Filter available accounts based on server hints.
+`false`|Show all available accounts.
+
+#### Windows
+
+```batch
+SET GCM_GITHUB_ACCOUNTFILTERING=false
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_GITHUB_ACCOUNTFILTERING=false
+```
+
+**Also see: [credential.gitHubAccountFiltering][credential-githubaccountfiltering]**
+
+---
+
 ### GCM_GITHUB_AUTHMODES
 
 Override the available authentication modes presented during GitHub
@@ -633,6 +716,7 @@ _(unset)_|Windows: `wincredman`, macOS: `keychain`, Linux: _(none)_|-
 `gpg`|Use GPG to store encrypted files that are compatible with the [`pass` utility][passwordstore] (requires GPG and `pass` to initialize the store).|macOS, Linux
 `cache`|Git's built-in [credential cache][git-credential-cache].|Windows, macOS, Linux
 `plaintext`|Store credentials in plaintext files (**UNSECURE**). Customize the plaintext store location with [`GCM_PLAINTEXT_STORE_PATH`][gcm-plaintext-store-path].|Windows, macOS, Linux
+`none`|Do not store credentials via GCM.|Windows, macOS, Linux
 
 #### Windows
 
@@ -776,7 +860,10 @@ export GCM_MSAUTH_FLOW="devicecode"
 
 Use the operating system account manager where available.
 
-Defaults to `false`. This default is subject to change in the future.
+Defaults to `false`. In certain cloud hosted environments when using a work or
+school account, such as [Microsoft DevBox][devbox], the default is `true`.
+
+These defaults are subject to change in the future.
 
 _**Note:** before you enable this option on Windows, please
 [review the details][windows-broker] about what this means to your local Windows
@@ -803,15 +890,47 @@ export GCM_MSAUTH_USEBROKER="false"
 
 ---
 
+### GCM_MSAUTH_USEDEFAULTACCOUNT _(experimental)_
+
+Use the current operating system account by default when the broker is enabled.
+
+Defaults to `false`. In certain cloud hosted environments when using a work or
+school account, such as [Microsoft DevBox][devbox], the default is `true`.
+
+These defaults are subject to change in the future.
+
+Value|Description
+-|-
+`true`|Use the current operating system account by default.
+`false` _(default)_|Do not assume any account to use by default.
+
+#### Windows
+
+```batch
+SET GCM_MSAUTH_USEDEFAULTACCOUNT="true"
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_MSAUTH_USEDEFAULTACCOUNT="false"
+```
+
+**Also see: [credential.msauthUseDefaultAccount][credential-msauth-usedefaultaccount]**
+
+---
+
 ### GCM_AZREPOS_CREDENTIALTYPE
 
 Specify the type of credential the Azure Repos host provider should return.
 
-Defaults to the value `pat`.
+Defaults to the value `pat`. In certain cloud hosted environments when using a
+work or school account, such as [Microsoft DevBox][devbox], the default value is
+`oauth`.
 
 Value|Description
 -|-
-`pat` _(default)_|Azure DevOps personal access tokens
+`pat`|Azure DevOps personal access tokens
 `oauth`|Microsoft identity OAuth tokens (AAD or MSA tokens)
 
 More information about Azure Access tokens can be found [here][azure-access-tokens].
@@ -830,30 +949,268 @@ export GCM_AZREPOS_CREDENTIALTYPE="oauth"
 
 **Also see: [credential.azreposCredentialType][credential-azrepos-credential-type]**
 
+---
+
+### GCM_AZREPOS_MANAGEDIDENTITY
+
+Use a [Managed Identity][managed-identity] to authenticate with Azure Repos.
+
+The value `system` will tell GCM to use the system-assigned Managed Identity.
+
+To specify a user-assigned Managed Identity, use the format `id://{clientId}`
+where `{clientId}` is the client ID of the Managed Identity. Alternatively any
+GUID-like value will also be interpreted as a user-assigned Managed Identity
+client ID.
+
+To specify a Managed Identity associated with an Azure resource, you can use the
+format `resource://{resourceId}` where `{resourceId}` is the ID of the resource.
+
+For more information about managed identities, see the Azure DevOps
+[documentation][azrepos-sp-mid].
+
+Value|Description
+-|-
+`system`|System-Assigned Managed Identity
+`[guid]`|User-Assigned Managed Identity with the specified client ID
+`id://[guid]`|User-Assigned Managed Identity with the specified client ID
+`resource://[guid]`|User-Assigned Managed Identity for the associated resource
+
+#### Windows
+
+```batch
+SET GCM_AZREPOS_MANAGEDIDENTITY="id://11111111-1111-1111-1111-111111111111"
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_AZREPOS_MANAGEDIDENTITY="id://11111111-1111-1111-1111-111111111111"
+```
+
+**Also see: [credential.azreposManagedIdentity][credential-azrepos-managedidentity]**
+
+---
+
+### GCM_AZREPOS_SERVICE_PRINCIPAL
+
+Specify the client and tenant IDs of a [service principal][service-principal]
+to use when performing Microsoft authentication for Azure Repos.
+
+The value of this setting should be in the format: `{tenantId}/{clientId}`.
+
+You must also set at least one authentication mechanism if you set this value:
+
+- [GCM_AZREPOS_SP_SECRET][gcm-azrepos-sp-secret]
+- [GCM_AZREPOS_SP_CERT_THUMBPRINT][gcm-azrepos-sp-cert-thumbprint]
+
+For more information about service principals, see the Azure DevOps
+[documentation][azrepos-sp-mid].
+
+#### Windows
+
+```batch
+SET GCM_AZREPOS_SERVICE_PRINCIPAL="11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222"
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_AZREPOS_SERVICE_PRINCIPAL="11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222"
+```
+
+**Also see: [credential.azreposServicePrincipal][credential-azrepos-sp]**
+
+---
+
+### GCM_AZREPOS_SP_SECRET
+
+Specifies the client secret for the [service principal][service-principal] when
+performing Microsoft authentication for Azure Repos with
+[GCM_AZREPOS_SERVICE_PRINCIPAL][gcm-azrepos-sp] set.
+
+#### Windows
+
+```batch
+SET GCM_AZREPOS_SP_SECRET="da39a3ee5e6b4b0d3255bfef95601890afd80709"
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_AZREPOS_SP_SECRET="da39a3ee5e6b4b0d3255bfef95601890afd80709"
+```
+
+**Also see: [credential.azreposServicePrincipalSecret][credential-azrepos-sp-secret]**
+
+---
+
+### GCM_AZREPOS_SP_CERT_THUMBPRINT
+
+Specifies the thumbprint of a certificate to use when authenticating as a
+[service principal][service-principal] for Azure Repos when
+[GCM_AZREPOS_SERVICE_PRINCIPAL][gcm-azrepos-sp] is set.
+
+#### Windows
+
+```batch
+SET GCM_AZREPOS_SP_CERT_THUMBPRINT="9b6555292e4ea21cbc2ebd23e66e2f91ebbe92dc"
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_AZREPOS_SP_CERT_THUMBPRINT="9b6555292e4ea21cbc2ebd23e66e2f91ebbe92dc"
+```
+
+**Also see: [credential.azreposServicePrincipalCertificateThumbprint][credential-azrepos-sp-cert-thumbprint]**
+
+---
+
+### GCM_AZREPOS_SP_CERT_SEND_X5C
+
+When using a certificate for service principal authentication, this configuration
+specifies whether the X5C claim should be should be sent to the STS. Sending the x5c
+enables application developers to achieve easy certificate rollover in Azure AD:
+this method will send the public certificate to Azure AD along with the token request,
+so that Azure AD can use it to validate the subject name based on a trusted issuer
+policy. This saves the application admin from the need to explicitly manage the
+certificate rollover. For details see [https://aka.ms/msal-net-sni](https://aka.ms/msal-net-sni).
+
+#### Windows
+
+```batch
+SET GCM_AZREPOS_SP_CERT_SEND_X5C="true"
+```
+
+#### macOS/Linux
+
+```bash
+export GCM_AZREPOS_SP_CERT_SEND_X5C="true"
+```
+
+**Also see: [credential.azreposServicePrincipalCertificateSendX5C][credential-azrepos-sp-cert-x5c]**
+
+---
+
+### GIT_TRACE2
+
+Turns on Trace2 Normal Format tracing - see [Git's Trace2 Normal Format
+documentation][trace2-normal-docs] for more details.
+
+#### Windows
+
+```batch
+SET GIT_TRACE2=%UserProfile%\log.normal
+```
+
+#### macOS/Linux
+
+```bash
+export GIT_TRACE2=~/log.normal
+```
+
+If the value of `GIT_TRACE2` is a full path to a file in an existing directory,
+logs are appended to the file.
+
+If the value of `GIT_TRACE2` is `true` or `1`, logs are written to standard
+error.
+
+Defaults to disabled.
+
+**Also see: [trace2.normalFormat][trace2-normal-config]**
+
+---
+
+### GIT_TRACE2_EVENT
+
+Turns on Trace2 Event Format tracing - see [Git's Trace2 Event Format
+documentation][trace2-event-docs] for more details.
+
+#### Windows
+
+```batch
+SET GIT_TRACE2_EVENT=%UserProfile%\log.event
+```
+
+#### macOS/Linux
+
+```bash
+export GIT_TRACE2_EVENT=~/log.event
+```
+
+If the value of `GIT_TRACE2_EVENT` is a full path to a file in an existing
+directory, logs are appended to the file.
+
+If the value of `GIT_TRACE2_EVENT` is `true` or `1`, logs are written to
+standard error.
+
+Defaults to disabled.
+
+**Also see: [trace2.eventFormat][trace2-event-config]**
+
+---
+
+### GIT_TRACE2_PERF
+
+Turns on Trace2 Performance Format tracing - see [Git's Trace2 Performance
+Format documentation][trace2-performance-docs] for more details.
+
+#### Windows
+
+```batch
+SET GIT_TRACE2_PERF=%UserProfile%\log.perf
+```
+
+#### macOS/Linux
+
+```bash
+export GIT_TRACE2_PERF=~/log.perf
+```
+
+If the value of `GIT_TRACE2_PERF` is a full path to a file in an existing
+directory, logs are appended to the file.
+
+If the value of `GIT_TRACE2_PERF` is `true` or `1`, logs are written to
+standard error.
+
+Defaults to disabled.
+
+**Also see: [trace2.perfFormat][trace2-performance-config]**
+
 [autodetect]: autodetect.md
 [azure-access-tokens]: azrepos-users-and-tokens.md
 [configuration]: configuration.md
-[credential-allowwindowsauth]: environment.md#credentialallowWindowsAuth
+[credential-allowwindowsauth]: configuration.md#credentialallowwindowsauth
+[credential-allowunsaferemotes]: configuration.md#credentialallowunsaferemotes
 [credential-authority]: configuration.md#credentialauthority-deprecated
 [credential-autodetecttimeout]: configuration.md#credentialautodetecttimeout
-[credential-azrepos-credential-type]: configuration.md#azreposcredentialtype
+[credential-azrepos-credential-type]: configuration.md#credentialazreposcredentialtype
+[credential-azrepos-managedidentity]: configuration.md#credentialazreposmanagedidentity
 [credential-bitbucketauthmodes]: configuration.md#credentialbitbucketAuthModes
 [credential-cacheoptions]: configuration.md#credentialcacheoptions
 [credential-credentialstore]: configuration.md#credentialcredentialstore
+[credential-debug]: configuration.md#credentialdebug
 [credential-dpapi-store-path]: configuration.md#credentialdpapistorepath
+[credential-githubaccountfiltering]: configuration.md#credentialgitHubAccountFiltering
 [credential-githubauthmodes]: configuration.md#credentialgitHubAuthModes
 [credential-gitlabauthmodes]: configuration.md#credentialgitLabAuthModes
 [credential-guiprompt]: configuration.md#credentialguiprompt
+[credential-guisoftwarerendering]: configuration.md#credentialguisoftwarerendering
 [credential-httpproxy]: configuration.md#credentialhttpProxy-deprecated
 [credential-interactive]: configuration.md#credentialinteractive
 [credential-namespace]: configuration.md#credentialnamespace
 [credential-msauth-flow]: configuration.md#credentialmsauthflow
 [credential-msauth-usebroker]: configuration.md#credentialmsauthusebroker-experimental
+[credential-msauth-usedefaultaccount]: configuration.md#credentialmsauthusedefaultaccount-experimental
 [credential-plain-text-store]: configuration.md#credentialplaintextstorepath
 [credential-provider]: configuration.md#credentialprovider
 [credential-stores]: credstores.md
+[credential-trace]: configuration.md#credentialtrace
+[credential-trace-secrets]: configuration.md#credentialtracesecrets
+[credential-trace-msauth]: configuration.md#credentialtracemsauth
 [default-values]: enterprise-config.md
-[freedesktop-ss]: https://specifications.freedesktop.org/secret-service/
+[devbox]: https://azure.microsoft.com/en-us/products/dev-box
+[freedesktop-ss]: https://specifications.freedesktop.org/secret-service-spec/
 [gcm]: usage.md
 [gcm-interactive]: #gcm_interactive
 [gcm-credential-store]: #gcm_credential_store
@@ -863,8 +1220,26 @@ export GCM_AZREPOS_CREDENTIALTYPE="oauth"
 [git-cache-options]: https://git-scm.com/docs/git-credential-cache#_options
 [git-credential-cache]: https://git-scm.com/docs/git-credential-cache
 [git-httpproxy]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy
+[github-emu]: https://docs.github.com/en/enterprise-cloud@latest/admin/identity-and-access-management/using-enterprise-managed-users-for-iam/about-enterprise-managed-users
 [network-http-proxy]: netconfig.md#http-proxy
 [libsecret]: https://wiki.gnome.org/Projects/Libsecret
+[managed-identity]: https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview
 [migration-guide]: migration.md#gcm_authority
 [passwordstore]: https://www.passwordstore.org/
+[trace2-normal-docs]: https://git-scm.com/docs/api-trace2#_the_normal_format_target
+[trace2-normal-config]: configuration.md#trace2normalTarget
+[trace2-event-docs]: https://git-scm.com/docs/api-trace2#_the_event_format_target
+[trace2-event-config]: configuration.md#trace2eventTarget
+[trace2-performance-docs]: https://git-scm.com/docs/api-trace2#_the_performance_format_target
+[trace2-performance-config]: configuration.md#trace2perfTarget
 [windows-broker]: windows-broker.md
+[service-principal]: https://docs.microsoft.com/en-us/azure/active-directory/develop/app-objects-and-service-principals
+[azrepos-sp-mid]: https://learn.microsoft.com/en-us/azure/devops/integrate/get-started/authentication/service-principal-managed-identity
+[gcm-azrepos-sp]: #gcm_azrepos_service_principal
+[gcm-azrepos-sp-secret]: #gcm_azrepos_sp_secret
+[gcm-azrepos-sp-cert-thumbprint]: #gcm_azrepos_sp_cert_thumbprint
+[gcm-azrepos-sp-cert-x5c]: #gcm_azrepos_sp_cert_send_x5c
+[credential-azrepos-sp]: configuration.md#credentialazreposserviceprincipal
+[credential-azrepos-sp-secret]: configuration.md#credentialazreposserviceprincipalsecret
+[credential-azrepos-sp-cert-thumbprint]: configuration.md#credentialazreposserviceprincipalcertificatethumbprint
+[credential-azrepos-sp-cert-x5c]: configuration.md#credentialazreposserviceprincipalcertificatesendx5c

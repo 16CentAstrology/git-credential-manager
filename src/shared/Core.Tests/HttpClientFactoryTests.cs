@@ -13,19 +13,19 @@ namespace GitCredentialManager.Tests
         [Fact]
         public void HttpClientFactory_GetClient_SetsDefaultHeaders()
         {
-            var factory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ISettings>(), new TestStandardStreams());
+            var factory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), Mock.Of<ISettings>(), new TestStandardStreams());
 
             HttpClient client = factory.CreateClient();
 
             Assert.NotNull(client);
-            Assert.Equal(Constants.GetHttpUserAgent(), client.DefaultRequestHeaders.UserAgent.ToString());
+            Assert.Equal(Constants.GetHttpUserAgent(Mock.Of<ITrace2>()), client.DefaultRequestHeaders.UserAgent.ToString());
             Assert.True(client.DefaultRequestHeaders.CacheControl.NoCache);
         }
 
         [Fact]
         public void HttpClientFactory_GetClient_MultipleCalls_ReturnsNewInstance()
         {
-            var factory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ISettings>(), new TestStandardStreams());
+            var factory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), Mock.Of<ISettings>(), new TestStandardStreams());
 
             HttpClient client1 = factory.CreateClient();
             HttpClient client2 = factory.CreateClient();
@@ -45,7 +45,7 @@ namespace GitCredentialManager.Tests
                 RemoteUri = repoRemoteUri,
                 RepositoryPath = repoPath
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -69,7 +69,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -102,7 +102,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -138,7 +138,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -167,7 +167,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -203,7 +203,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -239,7 +239,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -274,7 +274,7 @@ namespace GitCredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = proxyConfig
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<IFileSystem>(), Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, Mock.Of<IStandardStreams>());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -304,11 +304,41 @@ namespace GitCredentialManager.Tests
                 UseCustomCertificateBundleWithSchannel = useCustomCertBundleWithSchannel
             };
 
-            var factory = new HttpClientFactory(fileSystemMock.Object, Mock.Of<ITrace>(), settings, new TestStandardStreams());
+            var factory = new HttpClientFactory(fileSystemMock.Object, Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, new TestStandardStreams());
 
             HttpClient client = factory.CreateClient();
 
             fileSystemMock.Verify(fs => fs.FileExists(It.IsAny<string>()), expectBundleChecked ? Times.Once : Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null, false, null)]
+        [InlineData("~/.git-cookie", true, "# Netscape HTTP Cookie File\n" +
+                          "# https://curl.haxx.se/rfc/cookie_spec.html\n" +
+                          "# This is a generated file! Do not edit.\n" +
+                          "\n" +
+                          ".example.com\tTRUE\t/\tTRUE\t0\tcookie1\tvalue1\n" +
+                          ".example.com\tTRUE\t/\tTRUE\t0\tcookie2\tvalue2\n" +
+                          "#HttpOnly_.example.com\tTRUE\t/\tTRUE\t0\tcookie3\tvalue3\n")]
+        public void HttpClientFactory_GetClient_SetCookieOnlyIfEnabled(string cookieFilePath, bool expectCookieChecked, string cookieFileContent)
+        {
+            var fileSystemMock = new Mock<IFileSystem>();
+            fileSystemMock.Setup(fs => fs.FileExists(It.IsAny<string>())).Returns(true);
+            if (!string.IsNullOrWhiteSpace(cookieFileContent))
+            {
+                fileSystemMock.Setup(fs => fs.ReadAllText(cookieFilePath)).Returns(cookieFileContent);
+            }
+
+            var settings = new TestSettings()
+            {
+                CustomCookieFilePath = cookieFilePath
+            };
+
+            var factory = new HttpClientFactory(fileSystemMock.Object, Mock.Of<ITrace>(), Mock.Of<ITrace2>(), settings, new TestStandardStreams());
+
+            HttpClient client = factory.CreateClient();
+
+            fileSystemMock.Verify(fs => fs.FileExists(It.IsAny<string>()), expectCookieChecked ? Times.AtLeastOnce : Times.Never);
         }
 
         private static void AssertDefaultCredentials(ICredentials credentials)

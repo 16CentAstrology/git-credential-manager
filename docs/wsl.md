@@ -25,6 +25,9 @@ credential helper:
 git config --global credential.helper "/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe"
 ```
 
+> **Note:** the location of git-credential-manager.exe may be different in your
+installation of Git for Windows.
+
 If you intend to use Azure DevOps you must _also_ set the following Git
 configuration _inside of your WSL installation_.
 
@@ -38,7 +41,7 @@ If you wish to use GCM inside of WSL _without installing Git for Windows_
 you must complete additional configuration so that GCM can callback to Git
 inside of your WSL installation.
 
-Start by installing the [latest GCM ⬇️][latest-gcm]
+Start by installing the [latest GCM for Windows⬇️][latest-gcm]
 
 _Inside your WSL installation_, run the following command to set GCM as the Git
 credential helper:
@@ -65,7 +68,7 @@ After updating the `WSLENV` environment variable, restart your WSL installation.
 If you have installed GCM using the user-only installer (i.e, the `gcmuser-*.exe`
 installer and not the system-wide/admin required installer), you need to modify
 the above instructions to point to
-`/mnt/c/Users/<USERNAME>/AppData/Local/Programs/Git\ Credential\ Manager\ Core/git-credential-manager.exe`
+`/mnt/c/Users/<USERNAME>/AppData/Local/Programs/Git\ Credential\ Manager/git-credential-manager.exe`
 instead.
 
 ## How it works

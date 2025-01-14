@@ -8,7 +8,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GitCredentialManager;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GitHub
 {
@@ -105,7 +106,7 @@ namespace GitHub
 
                     string json = await response.Content.ReadAsStringAsync();
 
-                    return JsonConvert.DeserializeObject<GitHubUserInfo>(json);
+                    return JsonSerializer.Deserialize<GitHubUserInfo>(json);
                 }
             }
         }
@@ -124,7 +125,7 @@ namespace GitHub
 
                 string json = await response.Content.ReadAsStringAsync();
 
-                return JsonConvert.DeserializeObject<GitHubMetaInfo>(json);
+                return JsonSerializer.Deserialize<GitHubMetaInfo>(json);
             }
         }
 
@@ -202,7 +203,7 @@ namespace GitHub
             }
         }
 
-        private Uri GetApiRequestUri(Uri targetUri, string apiUrl)
+        internal /* for testing */ static Uri GetApiRequestUri(Uri targetUri, string apiUrl)
         {
             if (GitHubHostProvider.IsGitHubDotCom(targetUri))
             {
@@ -213,8 +214,13 @@ namespace GitHub
                 // If we're here, it's GitHub Enterprise via a configured authority
                 var baseUrl = targetUri.GetLeftPart(UriPartial.Authority);
 
+                RegexOptions reOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
+
                 // Check for 'raw.' in the hostname and remove it to get the correct GHE API URL
-                baseUrl = Regex.Replace(baseUrl, @"^(https?://)raw\.", "$1", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                baseUrl = Regex.Replace(baseUrl, @"^(https?://)raw\.", "$1", reOptions);
+
+                // Likewise check for `gist.` in the hostname and remove it to get the correct GHE API URL
+                baseUrl = Regex.Replace(baseUrl, @"^(https?://)gist\.", "$1", reOptions);
 
                 return new Uri(baseUrl + $"/api/v3/{apiUrl}");
             }
@@ -265,16 +271,16 @@ namespace GitHub
 
     public class GitHubUserInfo
     {
-        [JsonProperty("login")]
+        [JsonPropertyName("login")]
         public string Login { get; set; }
     }
 
     public class GitHubMetaInfo
     {
-        [JsonProperty("installed_version")]
+        [JsonPropertyName("installed_version")]
         public string InstalledVersion { get; set; }
 
-        [JsonProperty("verifiable_password_authentication")]
+        [JsonPropertyName("verifiable_password_authentication")]
         public bool VerifiablePasswordAuthentication { get; set; }
     }
 

@@ -1,19 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GitCredentialManager.Interop.Posix
 {
     public class PosixEnvironment : EnvironmentBase
     {
         public PosixEnvironment(IFileSystem fileSystem)
-            : this(fileSystem, GetCurrentVariables()) { }
+            : base(fileSystem) { }
 
         internal PosixEnvironment(IFileSystem fileSystem, IReadOnlyDictionary<string, string> variables)
-            : base(fileSystem)
-        {
-            EnsureArgument.NotNull(variables, nameof(variables));
-            Variables = variables;
-        }
+            : base(fileSystem, variables) { }
 
         #region EnvironmentBase
 
@@ -34,7 +31,7 @@ namespace GitCredentialManager.Interop.Posix
 
         #endregion
 
-        private static IReadOnlyDictionary<string, string> GetCurrentVariables()
+        protected override IReadOnlyDictionary<string, string> GetCurrentVariables()
         {
             var dict = new Dictionary<string, string>();
             var variables = Environment.GetEnvironmentVariables();

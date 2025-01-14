@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using GitCredentialManager.Diagnostics;
@@ -26,19 +24,18 @@ namespace GitCredentialManager.Commands
             _diagnostics = new List<IDiagnostic>
             {
                 // Add standard diagnostics
-                new EnvironmentDiagnostic(context.Environment),
-                new FileSystemDiagnostic(context.FileSystem),
-                new NetworkingDiagnostic(context.HttpClientFactory),
-                new GitDiagnostic(context.Git),
-                new CredentialStoreDiagnostic(context.CredentialStore),
+                new EnvironmentDiagnostic(context),
+                new FileSystemDiagnostic(context),
+                new NetworkingDiagnostic(context),
+                new GitDiagnostic(context),
+                new CredentialStoreDiagnostic(context),
                 new MicrosoftAuthenticationDiagnostic(context)
             };
 
-            AddOption(
-                new Option<string>(new []{"--output", "-o"}, "Output directory for diagnostic logs.")
-            );
+            var output = new Option<string>(new[] { "--output", "-o" }, "Output directory for diagnostic logs.");
+            AddOption(output);
 
-            Handler = CommandHandler.Create<string>(ExecuteAsync);
+            this.SetHandler(ExecuteAsync, output);
         }
 
         public void AddDiagnostic(IDiagnostic diagnostic)
@@ -86,7 +83,7 @@ namespace GitCredentialManager.Commands
             fullLog.WriteLine($"AppPath: {_context.ApplicationPath}");
             fullLog.WriteLine($"InstallDir: {_context.InstallationDirectory}");
             fullLog.WriteLine(
-                TryGetAssemblyVersion(out string version)
+                AssemblyUtils.TryGetAssemblyVersion(out string version)
                     ? $"Version: {version}"
                     : "Version: [!] Failed to get version information [!]"
             );
@@ -196,24 +193,6 @@ namespace GitCredentialManager.Commands
 
             fullLog.Close();
             return numFailed;
-        }
-
-        private bool TryGetAssemblyVersion(out string version)
-        {
-            try
-            {
-                var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-                var assemblyVersionAttribute = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-                version = assemblyVersionAttribute is null
-                    ? assembly.GetName().Version.ToString()
-                    : assemblyVersionAttribute.InformationalVersion;
-                return true;
-            }
-            catch
-            {
-                version = null;
-                return false;
-            }
         }
 
         private static class ConsoleEx

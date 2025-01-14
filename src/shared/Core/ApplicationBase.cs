@@ -1,10 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitCredentialManager.UI;
 
 namespace GitCredentialManager
 {
@@ -75,24 +75,18 @@ namespace GitCredentialManager
                 Context.Trace.WriteLine("Tracing of secrets is enabled. Trace output may contain sensitive information.");
             }
 
+            // Set software rendering if defined in settings
+            if (Context.Settings.UseSoftwareRendering)
+            {
+                AvaloniaUi.Initialize(win32SoftwareRendering: true);
+            }
+
             return RunInternalAsync(args);
         }
 
         protected abstract Task<int> RunInternalAsync(string[] args);
 
         #region Helpers
-
-        public static string GetEntryApplicationPath()
-        {
-            return PlatformUtils.GetNativeEntryPath() ??
-                   Process.GetCurrentProcess().MainModule?.FileName ??
-                   Environment.GetCommandLineArgs()[0];
-        }
-
-        public static string GetInstallationDirectory()
-        {
-            return AppContext.BaseDirectory;
-        }
 
         /// <summary>
         /// Wait until a debugger has attached to the currently executing process.

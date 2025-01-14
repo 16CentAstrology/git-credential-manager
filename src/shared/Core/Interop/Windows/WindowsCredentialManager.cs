@@ -24,6 +24,11 @@ namespace GitCredentialManager.Interop.Windows
             _namespace = @namespace;
         }
 
+        public IList<string> GetAccounts(string service)
+        {
+            return Enumerate(service, null).Select(x => x.UserName).Distinct().ToList();
+        }
+
         public ICredential Get(string service, string account)
         {
             return Enumerate(service, account).FirstOrDefault();
@@ -269,11 +274,19 @@ namespace GitCredentialManager.Interop.Windows
                 return false;
             }
 
-            // Trim the "LegacyGeneric" prefix Windows adds and any namespace we have been filtered with
+            // Trim the "LegacyGeneric" prefix Windows adds
             string targetName = credential.TargetName.TrimUntilIndexOf(TargetNameLegacyGenericPrefix);
+            
+            // Only match credentials with the namespace we have been configured with (if any)
             if (!string.IsNullOrWhiteSpace(_namespace))
             {
-                targetName = targetName.TrimUntilIndexOf($"{_namespace}:");
+                string nsPrefix = $"{_namespace}:";
+                if (!targetName.StartsWith(nsPrefix, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                targetName = targetName.Substring(nsPrefix.Length);
             }
 
             // If the target name matches the service name exactly then return 'match'
