@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using GitCredentialManager.Interop.Linux;
 using GitCredentialManager.Interop.MacOS;
@@ -15,7 +17,7 @@ namespace GitCredentialManager
         /// <summary>
         /// Absolute path the application entry executable.
         /// </summary>
-        string ApplicationPath { get; }
+        string ApplicationPath { get; set; }
 
         /// <summary>
         /// Absolute path to the Git Credential Manager installation directory.
@@ -48,6 +50,11 @@ namespace GitCredentialManager
         ITrace Trace { get; }
 
         /// <summary>
+        /// Application TRACE2 tracing system.
+        /// </summary>
+        ITrace2 Trace2 { get; }
+
+        /// <summary>
         /// File system abstraction (exists mainly for testing).
         /// </summary>
         IFileSystem FileSystem { get; }
@@ -71,6 +78,11 @@ namespace GitCredentialManager
         /// The current process environment.
         /// </summary>
         IEnvironment Environment { get; }
+
+        /// <summary>
+        /// Process manager.
+        /// </summary>
+        IProcessManager ProcessManager { get; }
     }
 
     /// <summary>
@@ -78,26 +90,27 @@ namespace GitCredentialManager
     /// </summary>
     public class CommandContext : DisposableObject, ICommandContext
     {
-        public CommandContext(string appPath, string installDir)
+        public CommandContext()
         {
-            EnsureArgument.NotNullOrWhiteSpace(appPath, nameof (appPath));
-
-            ApplicationPath = appPath;
-            InstallationDirectory = installDir;
+            ApplicationPath = GetEntryApplicationPath();
+            InstallationDirectory = GetInstallationDirectory();
 
             Streams = new StandardStreams();
             Trace   = new Trace();
+            Trace2  = new Trace2(this);
 
             if (PlatformUtils.IsWindows())
             {
                 FileSystem        = new WindowsFileSystem();
-                SessionManager    = new WindowsSessionManager();
                 Environment       = new WindowsEnvironment(FileSystem);
-                Terminal          = new WindowsTerminal(Trace);
+                SessionManager    = new WindowsSessionManager(Environment, FileSystem);
+                ProcessManager    = new WindowsProcessManager(Trace2);
+                Terminal          = new WindowsTerminal(Trace, Trace2);
                 string gitPath    = GetGitPath(Environment, FileSystem, Trace);
                 Git               = new GitProcess(
                                             Trace,
-                                            Environment,
+                                            Trace2,
+                                            ProcessManager,
                                             gitPath,
                                             FileSystem.GetCurrentDirectory()
                                         );
@@ -106,29 +119,32 @@ namespace GitCredentialManager
             else if (PlatformUtils.IsMacOS())
             {
                 FileSystem        = new MacOSFileSystem();
-                SessionManager    = new MacOSSessionManager();
                 Environment       = new MacOSEnvironment(FileSystem);
-                Terminal          = new MacOSTerminal(Trace);
+                SessionManager    = new MacOSSessionManager(Environment, FileSystem);
+                ProcessManager    = new ProcessManager(Trace2);
+                Terminal          = new MacOSTerminal(Trace, Trace2);
                 string gitPath    = GetGitPath(Environment, FileSystem, Trace);
                 Git               = new GitProcess(
                                             Trace,
-                                            Environment,
+                                            Trace2,
+                                            ProcessManager,
                                             gitPath,
                                             FileSystem.GetCurrentDirectory()
                                         );
-                Settings          = new Settings(Environment, Git);
+                Settings          = new MacOSSettings(Environment, Git, Trace);
             }
             else if (PlatformUtils.IsLinux())
             {
                 FileSystem        = new LinuxFileSystem();
-                // TODO: support more than just 'Posix' or X11
-                SessionManager    = new PosixSessionManager();
                 Environment       = new PosixEnvironment(FileSystem);
-                Terminal          = new LinuxTerminal(Trace);
+                SessionManager    = new LinuxSessionManager(Environment, FileSystem);
+                ProcessManager    = new ProcessManager(Trace2);
+                Terminal          = new LinuxTerminal(Trace, Trace2);
                 string gitPath    = GetGitPath(Environment, FileSystem, Trace);
                 Git               = new GitProcess(
                                             Trace,
-                                            Environment,
+                                            Trace2,
+                                            ProcessManager,
                                             gitPath,
                                             FileSystem.GetCurrentDirectory()
                                         );
@@ -139,7 +155,7 @@ namespace GitCredentialManager
                 throw new PlatformNotSupportedException();
             }
 
-            HttpClientFactory = new HttpClientFactory(FileSystem, Trace, Settings, Streams);
+            HttpClientFactory = new HttpClientFactory(FileSystem, Trace, Trace2, Settings, Streams);
             CredentialStore   = new CredentialStore(this);
         }
 
@@ -177,7 +193,7 @@ namespace GitCredentialManager
 
         #region ICommandContext
 
-        public string ApplicationPath { get; }
+        public string ApplicationPath { get; set; }
 
         public string InstallationDirectory { get; }
 
@@ -191,6 +207,8 @@ namespace GitCredentialManager
 
         public ITrace Trace { get; }
 
+        public ITrace2 Trace2 { get; }
+
         public IFileSystem FileSystem { get; }
 
         public ICredentialStore CredentialStore { get; }
@@ -200,6 +218,8 @@ namespace GitCredentialManager
         public IGit Git { get; }
 
         public IEnvironment Environment { get; }
+
+        public IProcessManager ProcessManager { get; }
 
         #endregion
 
@@ -214,5 +234,17 @@ namespace GitCredentialManager
         }
 
         #endregion
+
+        public static string GetEntryApplicationPath()
+        {
+            return PlatformUtils.GetNativeEntryPath() ??
+                   Process.GetCurrentProcess().MainModule?.FileName ??
+                   System.Environment.GetCommandLineArgs()[0];
+        }
+
+        public static string GetInstallationDirectory()
+        {
+            return AppContext.BaseDirectory;
+        }
     }
 }

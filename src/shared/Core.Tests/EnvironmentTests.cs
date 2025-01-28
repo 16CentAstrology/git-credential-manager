@@ -15,7 +15,7 @@ namespace GitCredentialManager.Tests
         private const string PosixPathVar = "/home/john.doe/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
         private const string PosixExecName = "foo";
 
-        [PlatformFact(Platforms.Windows)]
+        [WindowsFact]
         public void WindowsEnvironment_TryLocateExecutable_NotExists_ReturnFalse()
         {
             var fs = new TestFileSystem();
@@ -28,7 +28,7 @@ namespace GitCredentialManager.Tests
             Assert.Null(actualPath);
         }
 
-        [PlatformFact(Platforms.Windows)]
+        [WindowsFact]
         public void WindowsEnvironment_TryLocateExecutable_Exists_ReturnTrueAndPath()
         {
             string expectedPath = @"C:\Windows\system32\foo.exe";
@@ -48,7 +48,7 @@ namespace GitCredentialManager.Tests
             Assert.Equal(expectedPath, actualPath);
         }
 
-        [PlatformFact(Platforms.Windows)]
+        [WindowsFact]
         public void WindowsEnvironment_TryLocateExecutable_ExistsMultiple_ReturnTrueAndFirstPath()
         {
             string expectedPath = @"C:\Users\john.doe\bin\foo.exe";
@@ -70,7 +70,7 @@ namespace GitCredentialManager.Tests
             Assert.Equal(expectedPath, actualPath);
         }
 
-        [PlatformFact(Platforms.Posix)]
+        [PosixFact]
         public void PosixEnvironment_TryLocateExecutable_NotExists_ReturnFalse()
         {
             var fs = new TestFileSystem();
@@ -83,7 +83,7 @@ namespace GitCredentialManager.Tests
             Assert.Null(actualPath);
         }
 
-        [PlatformFact(Platforms.Posix)]
+        [PosixFact]
         public void PosixEnvironment_TryLocateExecutable_Exists_ReturnTrueAndPath()
         {
             string expectedPath = "/usr/local/bin/foo";
@@ -103,7 +103,7 @@ namespace GitCredentialManager.Tests
             Assert.Equal(expectedPath, actualPath);
         }
 
-        [PlatformFact(Platforms.Posix)]
+        [PosixFact]
         public void PosixEnvironment_TryLocateExecutable_ExistsMultiple_ReturnTrueAndFirstPath()
         {
             string expectedPath = "/home/john.doe/bin/foo";
@@ -125,7 +125,7 @@ namespace GitCredentialManager.Tests
             Assert.Equal(expectedPath, actualPath);
         }
 
-        [PlatformFact(Platforms.MacOS)]
+        [MacOSFact]
         public void MacOSEnvironment_TryLocateExecutable_Paths_Are_Ignored()
         {
             List<string> pathsToIgnore = new List<string>()
@@ -149,6 +149,38 @@ namespace GitCredentialManager.Tests
 
             Assert.True(actualResult);
             Assert.Equal(expectedPath, actualPath);
+        }
+
+        [PosixFact]
+        public void PosixEnvironment_SetEnvironmentVariable_Sets_Expected_Value()
+        {
+            var variable = "FOO_BAR";
+            var value = "baz";
+                
+            var fs = new TestFileSystem();
+            var envars = new Dictionary<string, string>();
+            var env = new PosixEnvironment(fs, envars);
+
+            env.SetEnvironmentVariable(variable, value);
+
+            Assert.Contains(env.Variables, item 
+                => item.Key.Equals(variable) && item.Value.Equals(value));
+        }
+
+        [WindowsFact]
+        public void WindowsEnvironment_SetEnvironmentVariable_Sets_Expected_Value()
+        {
+            var variable = "FOO_BAR";
+            var value = "baz";
+                
+            var fs = new TestFileSystem();
+            var envars = new Dictionary<string, string>();
+            var env = new WindowsEnvironment(fs, envars);
+
+            env.SetEnvironmentVariable(variable, value);
+
+            Assert.Contains(env.Variables, item 
+                => item.Key.Equals(variable) && item.Value.Equals(value));
         }
     }
 }

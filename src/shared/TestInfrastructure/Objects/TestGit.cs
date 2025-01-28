@@ -28,10 +28,12 @@ namespace GitCredentialManager.Tests.Objects
 
         GitVersion IGit.Version => Version;
 
-        public Process CreateProcess(string args)
+        public ChildProcess CreateProcess(string args)
         {
             throw new NotImplementedException();
         }
+
+        bool IGit.IsInsideRepository() => !string.IsNullOrWhiteSpace(CurrentRepository);
 
         string IGit.GetCurrentRepository() => CurrentRepository;
 

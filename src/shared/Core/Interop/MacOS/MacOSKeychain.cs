@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using GitCredentialManager.Interop.MacOS.Native;
@@ -28,6 +30,71 @@ namespace GitCredentialManager.Interop.MacOS
         #endregion
 
         #region ICredentialStore
+
+        public IList<string> GetAccounts(string service)
+        {
+            IntPtr query = IntPtr.Zero;
+            IntPtr resultPtr = IntPtr.Zero;
+            IntPtr servicePtr = IntPtr.Zero;
+            IntPtr accountPtr = IntPtr.Zero;
+
+            try
+            {
+                query = CFDictionaryCreateMutable(
+                    IntPtr.Zero,
+                    0,
+                    IntPtr.Zero, IntPtr.Zero);
+
+                CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
+                CFDictionaryAddValue(query, kSecMatchLimit, kSecMatchLimitAll);
+                CFDictionaryAddValue(query, kSecReturnAttributes, kCFBooleanTrue);
+
+                if (!string.IsNullOrWhiteSpace(service))
+                {
+                    string fullService = CreateServiceName(service);
+                    servicePtr = CreateCFStringUtf8(fullService);
+                    CFDictionaryAddValue(query, kSecAttrService, servicePtr);
+                }
+
+                int searchResult = SecItemCopyMatching(query, out resultPtr);
+
+                switch (searchResult)
+                {
+                    case OK:
+                        int typeId = CFGetTypeID(resultPtr);
+                        Debug.Assert(typeId == CFArrayGetTypeID(), "Returned unknown item from account query");
+                        if (typeId == CFArrayGetTypeID())
+                        {
+                            int len = (int)CFArrayGetCount(resultPtr);
+                            var accounts = new HashSet<string>(len);
+                            for (int i = 0; i < len; i++)
+                            {
+                                IntPtr dict = CFArrayGetValueAtIndex(resultPtr, i);
+                                string account = GetStringAttribute(dict, kSecAttrAccount);
+                                accounts.Add(account);
+                            }
+
+                            return accounts.ToList();
+                        }
+
+                        throw new InteropException($"Unknown keychain search result type CFTypeID: {typeId}.", -1);
+
+                    case ErrorSecItemNotFound:
+                        return Array.Empty<string>();
+
+                    default:
+                        ThrowIfError(searchResult);
+                        return null;
+                }
+            }
+            finally
+            {
+                if (query != IntPtr.Zero) CFRelease(query);
+                if (servicePtr != IntPtr.Zero) CFRelease(servicePtr);
+                if (accountPtr != IntPtr.Zero) CFRelease(accountPtr);
+                if (resultPtr != IntPtr.Zero) CFRelease(resultPtr);
+            }
+        }
 
         public ICredential Get(string service, string account)
         {
@@ -235,35 +302,18 @@ namespace GitCredentialManager.Interop.MacOS
                 return null;
             }
 
-            IntPtr buffer = IntPtr.Zero;
-            try
+            if (CFDictionaryGetValueIfPresent(dict, key, out IntPtr value) && value != IntPtr.Zero)
             {
-                if (CFDictionaryGetValueIfPresent(dict, key, out IntPtr value) && value != IntPtr.Zero)
+                if (CFGetTypeID(value) == CFStringGetTypeID())
                 {
-                    if (CFGetTypeID(value) == CFStringGetTypeID())
-                    {
-                        int stringLength = (int)CFStringGetLength(value);
-                        int bufferSize = stringLength + 1;
-                        buffer = Marshal.AllocHGlobal(bufferSize);
-                        if (CFStringGetCString(value, buffer, bufferSize, CFStringEncoding.kCFStringEncodingUTF8))
-                        {
-                            return Marshal.PtrToStringAuto(buffer, stringLength);
-                        }
-                    }
-
-                    if (CFGetTypeID(value) == CFDataGetTypeID())
-                    {
-                        int length = CFDataGetLength(value);
-                        IntPtr ptr = CFDataGetBytePtr(value);
-                        return Marshal.PtrToStringAuto(ptr, length);
-                    }
+                    return CFStringToString(value);
                 }
-            }
-            finally
-            {
-                if (buffer != IntPtr.Zero)
+
+                if (CFGetTypeID(value) == CFDataGetTypeID())
                 {
-                    Marshal.FreeHGlobal(buffer);
+                    int length = CFDataGetLength(value);
+                    IntPtr ptr = CFDataGetBytePtr(value);
+                    return Marshal.PtrToStringAuto(ptr, length);
                 }
             }
 

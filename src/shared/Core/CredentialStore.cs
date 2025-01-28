@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using GitCredentialManager.Interop.Linux;
@@ -23,6 +24,12 @@ namespace GitCredentialManager
         }
 
         #region ICredentialStore
+
+        public IList<string> GetAccounts(string service)
+        {
+            EnsureBackingStore();
+            return _backingStore.GetAccounts(service);
+        }
 
         public ICredential Get(string service, string account)
         {
@@ -79,7 +86,7 @@ namespace GitCredentialManager
 
                 case StoreNames.Gpg:
                     ValidateGpgPass(out string gpgStoreRoot, out string gpgExec);
-                    IGpg gpg = new Gpg(gpgExec, _context.SessionManager);
+                    IGpg gpg = new Gpg(gpgExec, _context.SessionManager, _context.ProcessManager, _context.Trace2);
                     _backingStore = new GpgPassCredentialStore(_context.FileSystem, gpg, gpgStoreRoot, ns);
                     break;
 
@@ -93,11 +100,16 @@ namespace GitCredentialManager
                     _backingStore = new PlaintextCredentialStore(_context.FileSystem, plainStoreRoot, ns);
                     break;
 
+                case StoreNames.None:
+                    _backingStore = new NullCredentialStore();
+                    break;
+
                 default:
                     var sb = new StringBuilder();
                     sb.AppendLine(string.IsNullOrWhiteSpace(credStoreName)
                         ? "No credential store has been selected."
                         : $"Unknown credential store '{credStoreName}'.");
+                    _context.Trace2.WriteError(sb.ToString());
                     sb.AppendFormat(
                         "{3}Set the {0} environment variable or the {1}.{2} Git configuration setting to one of the following options:{3}{3}",
                         Constants.EnvironmentVariables.GcmCredentialStore,
@@ -160,24 +172,27 @@ namespace GitCredentialManager
 
             sb.AppendFormat("  {1,-13} : store credentials in plain-text files (UNSECURE){0}",
                 Environment.NewLine, StoreNames.Plaintext);
+
+            sb.AppendFormat("  {1, -13} : disable internal credential storage{0}",
+                Environment.NewLine, StoreNames.None);
         }
 
         private void ValidateWindowsCredentialManager()
         {
             if (!PlatformUtils.IsWindows())
             {
-                throw new Exception(
-                    $"Can only use the '{StoreNames.WindowsCredentialManager}' credential store on Windows." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = $"Can only use the '{StoreNames.WindowsCredentialManager}' credential store on Windows.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                            $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
 
             if (!WindowsCredentialManager.CanPersist())
             {
-                throw new Exception(
-                    $"Unable to persist credentials with the '{StoreNames.WindowsCredentialManager}' credential store." +
-                    Environment.NewLine +
+                var message = $"Unable to persist credentials with the '{StoreNames.WindowsCredentialManager}' credential store.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
                     $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
@@ -187,9 +202,9 @@ namespace GitCredentialManager
         {
             if (!PlatformUtils.IsWindows())
             {
-                throw new Exception(
-                    $"Can only use the '{StoreNames.Dpapi}' credential store on Windows." +
-                    Environment.NewLine +
+                var message = $"Can only use the '{StoreNames.Dpapi}' credential store on Windows.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message  + Environment.NewLine +
                     $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
@@ -210,10 +225,10 @@ namespace GitCredentialManager
         {
             if (!PlatformUtils.IsMacOS())
             {
-                throw new Exception(
-                    $"Can only use the '{StoreNames.MacOSKeychain}' credential store on macOS." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = $"Can only use the '{StoreNames.MacOSKeychain}' credential store on macOS.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message  + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
         }
@@ -222,19 +237,19 @@ namespace GitCredentialManager
         {
             if (!PlatformUtils.IsLinux())
             {
-                throw new Exception(
-                    $"Can only use the '{StoreNames.SecretService}' credential store on Linux." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = $"Can only use the '{StoreNames.SecretService}' credential store on Linux.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
 
             if (!_context.SessionManager.IsDesktopSession)
             {
-                throw new Exception(
-                    $"Cannot use the '{StoreNames.SecretService}' credential backing store without a graphical interface present." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = $"Cannot use the '{StoreNames.SecretService}' credential backing store without a graphical interface present.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
         }
@@ -243,10 +258,10 @@ namespace GitCredentialManager
         {
             if (!PlatformUtils.IsPosix())
             {
-                throw new Exception(
-                    $"Can only use the '{StoreNames.Gpg}' credential store on POSIX systems." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = $"Can only use the '{StoreNames.Gpg}' credential store on POSIX systems.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
 
@@ -258,17 +273,18 @@ namespace GitCredentialManager
                 !_context.Environment.Variables.ContainsKey("GPG_TTY") &&
                 !_context.Environment.Variables.ContainsKey("SSH_TTY"))
             {
-                throw new Exception(
-                    "GPG_TTY is not set; add `export GPG_TTY=$(tty)` to your profile." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = "GPG_TTY is not set; add `export GPG_TTY=$(tty)` to your profile.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
 
             // Check for a redirected pass store location
             if (!_context.Settings.TryGetSetting(
                 GpgPassCredentialStore.PasswordStoreDirEnvar,
-                null, null,
+                Constants.GitConfiguration.Credential.SectionName,
+                Constants.GitConfiguration.Credential.GpgPassStorePath,
                 out storeRoot))
             {
                 // Use default store root at ~/.password-store
@@ -279,10 +295,12 @@ namespace GitCredentialManager
             string gpgIdFile = Path.Combine(storeRoot, ".gpg-id");
             if (!_context.FileSystem.FileExists(gpgIdFile))
             {
-                throw new Exception(
-                    $"Password store has not been initialized at '{storeRoot}'; run `pass init <gpg-id>` to initialize the store." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var format =
+                    "Password store has not been initialized at '{0}'; run `pass init <gpg-id>` to initialize the store.";
+                var message = string.Format(format, storeRoot);
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
         }
@@ -291,10 +309,10 @@ namespace GitCredentialManager
         {
             if (PlatformUtils.IsWindows())
             {
-                throw new Exception(
-                    $"Can not use the '{StoreNames.Cache}' credential store on Windows due to lack of UNIX socket support in Git for Windows." +
-                    Environment.NewLine +
-                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
+                var message = $"Can not use the '{StoreNames.Cache}' credential store on Windows due to lack of UNIX socket support in Git for Windows.";
+                _context.Trace2.WriteError(message);
+                throw new Exception(message + Environment.NewLine +
+                                    $"See {Constants.HelpUrls.GcmCredentialStores} for more information."
                 );
             }
 
@@ -337,7 +355,9 @@ namespace GitCredentialManager
                     return gpgPath;
                 }
 
-                throw new Exception($"GPG executable does not exist with path '{gpgPath}'");
+                var format = "GPG executable does not exist with path '{0}'";
+                var message = string.Format(format, gpgPath);
+                throw new Trace2Exception(_context.Trace2, message, format);
             }
 
             // If no explicit GPG path is specified, mimic the way `pass`

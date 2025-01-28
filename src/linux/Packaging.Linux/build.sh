@@ -30,11 +30,28 @@ case "$i" in
     INSTALL_FROM_SOURCE="${i#*=}"
     shift # past argument=value
     ;;
+    --runtime=*)
+    RUNTIME="${i#*=}"
+    shift # past argument=value
+    ;;
+    --install-prefix=*)
+    INSTALL_PREFIX="${i#*=}"
+    shift # past argument=value
+    ;;
     *)
           # unknown option
     ;;
 esac
 done
+
+# Ensure install prefix exists
+if [ ! -d "$INSTALL_PREFIX" ]; then
+    mkdir -p "$INSTALL_PREFIX"
+fi
+
+if [ ! -z "$RUNTIME" ]; then
+    echo "Building for runtime ${RUNTIME}"
+fi
 
 # Perform pre-execution checks
 CONFIGURATION="${CONFIGURATION:=Debug}"
@@ -44,19 +61,17 @@ fi
 
 OUTDIR="$INSTALLER_OUT/$CONFIGURATION"
 PAYLOAD="$OUTDIR/payload"
+SYMBOLS="$OUTDIR/payload.sym"
 
 # Lay out payload
-"$INSTALLER_SRC/layout.sh" --configuration="$CONFIGURATION" || exit 1
+"$INSTALLER_SRC/layout.sh" --configuration="$CONFIGURATION" --runtime="$RUNTIME" || exit 1
 
 if [ $INSTALL_FROM_SOURCE = true ]; then
-    INSTALL_LOCATION="/usr/local"
-    mkdir -p "$INSTALL_LOCATION"
-
-    echo "Installing..."
+    echo "Installing to $INSTALL_PREFIX"
 
     # Install directories
-    INSTALL_TO="$INSTALL_LOCATION/share/gcm-core/"
-    LINK_TO="$INSTALL_LOCATION/bin/"
+    INSTALL_TO="$INSTALL_PREFIX/share/gcm-core/"
+    LINK_TO="$INSTALL_PREFIX/bin/"
 
     mkdir -p "$INSTALL_TO" "$LINK_TO"
 
@@ -69,16 +84,10 @@ if [ $INSTALL_FROM_SOURCE = true ]; then
             "$LINK_TO/git-credential-manager" || exit 1
     fi
 
-    # Create legacy symlink with older name
-    if [ ! -f "$LINK_TO/git-credential-manager-core" ]; then
-        ln -s -r "$INSTALL_TO/git-credential-manager" \
-            "$LINK_TO/git-credential-manager-core" || exit 1
-    fi
-
     echo "Install complete."
 else
     # Pack
-    "$INSTALLER_SRC/pack.sh" --configuration="$CONFIGURATION" --payload="$PAYLOAD" --version="$VERSION" || exit 1
+    "$INSTALLER_SRC/pack.sh" --configuration="$CONFIGURATION" --runtime="$RUNTIME" --payload="$PAYLOAD" --symbols="$SYMBOLS" --version="$VERSION" || exit 1
 fi
 
 echo "Build of Packaging.Linux complete."

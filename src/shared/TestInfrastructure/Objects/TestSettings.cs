@@ -31,6 +31,8 @@ namespace GitCredentialManager.Tests.Objects
 
         public bool IsCertificateVerificationEnabled { get; set; } = true;
 
+        public bool AutomaticallyUseClientCertificates { get; set; }
+
         public ProxyConfiguration ProxyConfiguration { get; set; }
 
         public string ParentWindowId { get; set; }
@@ -41,11 +43,28 @@ namespace GitCredentialManager.Tests.Objects
 
         public string CustomCertificateBundlePath { get; set; }
 
+        public string CustomCookieFilePath { get; set; }
+
         public TlsBackend TlsBackend { get; set; }
 
         public bool UseCustomCertificateBundleWithSchannel { get; set; }
 
         public int AutoDetectProviderTimeout { get; set; } = Constants.DefaultAutoDetectProviderTimeoutMs;
+
+        public bool UseMsAuthDefaultAccount { get; set; }
+
+        public bool AllowUnsafeRemotes { get; set; } = false;
+
+        public Trace2Settings GetTrace2Settings()
+        {
+            return new Trace2Settings()
+            {
+                FormatTargetsAndValues = new Dictionary<Trace2FormatTarget, string>()
+                {
+                    { Trace2FormatTarget.Event, "foo" }
+                }
+            };
+        }
 
         #region ISettings
 
@@ -56,6 +75,18 @@ namespace GitCredentialManager.Tests.Objects
             if (Environment?.Variables.TryGetValue(envarName, out value) ?? false)
             {
                 return true;
+            }
+
+            if (RemoteUri != null)
+            {
+                foreach (string scope in RemoteUri.GetGitConfigurationScopes())
+                {
+                    string key = $"{section}.{scope}.{property}";
+                    if (GitConfiguration?.TryGet(key, false, out value) ?? false)
+                    {
+                        return true;
+                    }
+                }
             }
 
             if (GitConfiguration?.TryGet($"{section}.{property}", false, out value) ?? false)
@@ -79,15 +110,25 @@ namespace GitCredentialManager.Tests.Objects
                 yield return envarValue;
             }
 
-            foreach (string scope in RemoteUri.GetGitConfigurationScopes())
+            IEnumerable<string> configValues;
+            if (RemoteUri != null)
             {
-                string key = $"{section}.{scope}.{property}";
-
-                IEnumerable<string> configValues = GitConfiguration.GetAll(key);
-                foreach (string value in configValues)
+                foreach (string scope in RemoteUri.GetGitConfigurationScopes())
                 {
-                    yield return value;
+                    string key = $"{section}.{scope}.{property}";
+
+                    configValues = GitConfiguration.GetAll(key);
+                    foreach (string value in configValues)
+                    {
+                        yield return value;
+                    }
                 }
+            }
+
+            configValues = GitConfiguration.GetAll($"{section}.{property}");
+            foreach (string value in configValues)
+            {
+                yield return value;
             }
         }
 
@@ -99,7 +140,11 @@ namespace GitCredentialManager.Tests.Objects
 
         bool ISettings.IsTerminalPromptsEnabled => IsTerminalPromptsEnabled;
 
-        bool ISettings.IsGuiPromptsEnabled => IsGuiPromptsEnabled;
+        bool ISettings.IsGuiPromptsEnabled
+        {
+            get => IsGuiPromptsEnabled;
+            set => IsGuiPromptsEnabled = value;
+        }
 
         bool ISettings.IsInteractionAllowed => IsInteractionAllowed;
 
@@ -134,11 +179,19 @@ namespace GitCredentialManager.Tests.Objects
 
         string ISettings.CustomCertificateBundlePath => CustomCertificateBundlePath;
 
+        string ISettings.CustomCookieFilePath => CustomCookieFilePath;
+
         TlsBackend ISettings.TlsBackend => TlsBackend;
 
         bool ISettings.UseCustomCertificateBundleWithSchannel => UseCustomCertificateBundleWithSchannel;
 
         int ISettings.AutoDetectProviderTimeout => AutoDetectProviderTimeout;
+
+        bool ISettings.UseMsAuthDefaultAccount => UseMsAuthDefaultAccount;
+
+        bool ISettings.UseSoftwareRendering => false;
+
+        bool ISettings.AllowUnsafeRemotes => AllowUnsafeRemotes;
 
         #endregion
 

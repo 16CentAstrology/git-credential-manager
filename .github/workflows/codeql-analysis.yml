@@ -22,14 +22,16 @@ jobs:
         language: [ 'csharp' ]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4.2.0
       with:
-        fetch-depth: 0 # patch around Nerdbank.GitVersioning failure
+        dotnet-version: 8.0.x
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
 
@@ -37,4 +39,4 @@ jobs:
        dotnet build
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3

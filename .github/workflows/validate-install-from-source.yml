@@ -1,6 +1,7 @@
 name: validate-install-from-source
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -14,19 +15,20 @@ jobs:
       matrix:
         vector:
         - image: ubuntu
-        - image: debian
+        - image: debian:bullseye
         - image: fedora
         # Centos no longer officially maintains images on Docker Hub. However,
         # tgagor is a contributor who pushes updated images weekly, which should
         # be sufficient for our validation needs.
         - image: tgagor/centos
-        - image: tgagor/centos-stream
         - image: redhat/ubi8
         - image: alpine
+        - image: alpine:3.14.10
         - image: opensuse/leap
         - image: opensuse/tumbleweed
         - image: registry.suse.com/suse/sle15:15.4.27.11.31
         - image: archlinux
+        - image: mcr.microsoft.com/cbl-mariner/base/core:2.0
     container: ${{matrix.vector.image}}
     steps:
       - run: |
@@ -34,10 +36,13 @@ jobs:
             zypper -n install tar gzip
           elif [[ ${{matrix.vector.image}} == *"centos"* ]]; then
             dnf install which -y
-          fi       
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
-        with:
-          fetch-depth: 0 # Indicate full history so Nerdbank.GitVersioning works.
+          elif [[ ${{matrix.vector.image}} == *"mariner"* ]]; then
+            GNUPGHOME=/root/.gnupg tdnf update -y &&
+            GNUPGHOME=/root/.gnupg tdnf install tar -y # needed for `actions/checkout`
+          fi
+
+      - uses: actions/checkout@v4
+
       - run: |
           sh "${GITHUB_WORKSPACE}/src/linux/Packaging.Linux/install-from-source.sh" -y
           git-credential-manager --help || exit 1

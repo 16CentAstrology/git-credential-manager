@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 
 namespace GitCredentialManager.Commands
@@ -23,7 +22,7 @@ namespace GitCredentialManager.Commands
             Context = context;
             _hostProviderRegistry = hostProviderRegistry;
 
-            Handler = CommandHandler.Create(ExecuteAsync);
+            this.SetHandler(ExecuteAsync);
         }
 
         protected ICommandContext Context { get; }
@@ -34,7 +33,7 @@ namespace GitCredentialManager.Commands
 
             // Parse standard input arguments
             // git-credential treats the keys as case-sensitive; so should we.
-            IDictionary<string, string> inputDict = await Context.Streams.In.ReadDictionaryAsync(StringComparer.Ordinal);
+            IDictionary<string, IList<string>> inputDict = await Context.Streams.In.ReadMultiDictionaryAsync(StringComparer.Ordinal);
             var input = new InputArguments(inputDict);
 
             // Validate minimum arguments are present
@@ -58,22 +57,24 @@ namespace GitCredentialManager.Commands
         {
             if (input.Protocol is null)
             {
-                throw new InvalidOperationException("Missing 'protocol' input argument");
+                throw new Trace2InvalidOperationException(Context.Trace2, "Missing 'protocol' input argument");
             }
 
             if (string.IsNullOrWhiteSpace(input.Protocol))
             {
-                throw new InvalidOperationException("Invalid 'protocol' input argument (cannot be empty)");
+                throw new Trace2InvalidOperationException(Context.Trace2,
+                    "Invalid 'protocol' input argument (cannot be empty)");
             }
 
             if (input.Host is null)
             {
-                throw new InvalidOperationException("Missing 'host' input argument");
+                throw new Trace2InvalidOperationException(Context.Trace2, "Missing 'host' input argument");
             }
 
             if (string.IsNullOrWhiteSpace(input.Host))
             {
-                throw new InvalidOperationException("Invalid 'host' input argument (cannot be empty)");
+                throw new Trace2InvalidOperationException(Context.Trace2,
+                    "Invalid 'host' input argument (cannot be empty)");
             }
         }
 

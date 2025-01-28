@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace GitCredentialManager.Interop.Windows
@@ -9,14 +10,10 @@ namespace GitCredentialManager.Interop.Windows
     public class WindowsEnvironment : EnvironmentBase
     {
         public WindowsEnvironment(IFileSystem fileSystem)
-            : this(fileSystem, GetCurrentVariables()) { }
+            : base(fileSystem) { }
 
         internal WindowsEnvironment(IFileSystem fileSystem, IReadOnlyDictionary<string, string> variables)
-            : base(fileSystem)
-        {
-            EnsureArgument.NotNull(variables, nameof(variables));
-            Variables = variables;
-        }
+            : base(fileSystem, variables) { }
 
         #region EnvironmentBase
 
@@ -48,7 +45,7 @@ namespace GitCredentialManager.Interop.Windows
             Environment.SetEnvironmentVariable("PATH", newValue, target);
 
             // Update the cached PATH variable to the latest value (as well as all other variables)
-            Variables = GetCurrentVariables();
+            Refresh();
         }
 
         public override void RemoveDirectoryFromPath(string directoryPath, EnvironmentVariableTarget target)
@@ -66,25 +63,13 @@ namespace GitCredentialManager.Interop.Windows
                 Environment.SetEnvironmentVariable("PATH", newValue, target);
 
                 // Update the cached PATH variable to the latest value (as well as all other variables)
-                Variables = GetCurrentVariables();
+                Refresh();
             }
-        }
-
-        public override Process CreateProcess(string path, string args, bool useShellExecute, string workingDirectory)
-        {
-            // If we're asked to start a WSL executable we must launch via the wsl.exe command tool
-            if (!useShellExecute && WslUtils.IsWslPath(path))
-            {
-                string wslPath = WslUtils.ConvertToDistroPath(path, out string distro);
-                return WslUtils.CreateWslProcess(distro, $"{wslPath} {args}", workingDirectory);
-            }
-
-            return base.CreateProcess(path, args, useShellExecute, workingDirectory);
         }
 
         #endregion
 
-        private static IReadOnlyDictionary<string, string> GetCurrentVariables()
+        protected override IReadOnlyDictionary<string, string> GetCurrentVariables()
         {
             // On Windows it is technically possible to get env vars which differ only by case
             // even though the general assumption is that they are case insensitive on Windows.

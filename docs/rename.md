@@ -3,13 +3,30 @@
 In November 2021, _"Git Credential Manager Core"_ was [renamed][rename-pr] to
 simply _"Git Credential Manager"_, dropping the "Core" moniker. We announced the
 new name in a [GitHub blog post][rename-blog], along with the new home for the
-project in it's own [organization][gcm-org].
+project in its own [organization][gcm-org].
 
 ![Git Credential Manager Core renamed](img/gcmcore-rename.png)
 
 At the time, the actual exectuable name was not updated and continued to be
-`git-credential-manager-core`. As of [VERSION][rename-ver], the executable has
+`git-credential-manager-core`. As of [2.0.877][rename-ver], the executable has
 been renamed to `git-credential-manager`, matching the new project name.
+
+---
+
+:warning: **Update:** :warning:
+
+As of [2.3.0][no-symlink-ver] the `git-credential-manager-core` symlinks have been
+removed.
+
+If you have not updated your configuration you will see error messages similar to:
+
+```console
+git: 'credential-manager-core' is not a git command. See 'git --help'.
+```
+
+To fix your configuration, please follow the [instructions][instructions] below.
+
+---
 
 ## Rename transition
 
@@ -21,11 +38,11 @@ warning: git-credential-manager-core was renamed to git-credential-manager
 warning: see https://aka.ms/gcm/rename for more information
 ```
 
-Since the executable was renamed in VERSION, GCM has also included symlinks
+Since the executable was renamed in 2.0.877, GCM has also included symlinks
 using the old name in order to ensure no one's setups would immediately break.
 
 These links will remain until _two_ major Git versions are released after GCM
-VERSION, _**at which point the symlinks will no longer be included**_.
+2.0.877, _**at which point the symlinks will no longer be included**_.
 
 It is recommended to update your Git configuration to use the new executable
 name as soon as possible to prevent any issues in the future.
@@ -35,7 +52,7 @@ name as soon as possible to prevent any issues in the future.
 ### Git for Windows
 
 If you are using GCM bundled with Git for Windows (recommended), you should make
-sure you have updated to at least version WINGIT_VERSION.
+sure you have updated to the latest version.
 
 [Download the latest Git for Windows ⬇️][git-windows]
 
@@ -133,7 +150,7 @@ Look out for entries that include `git-credential-manager-core` or
 or `manager` respectively.
 
 > **Note:** When updating the Git configuration file in your home directory
-> (`$HOME/.gitconfig` or `%USERPROFILE\.gitconfig%`) you should ensure there are
+> (`$HOME/.gitconfig` or `%USERPROFILE%\.gitconfig`) you should ensure there are
 > is an additional blank entry for `credential.helper` before the GCM entry.
 >
 > **Mac/Linux**
@@ -156,11 +173,13 @@ or `manager` respectively.
 > helper that is configured, and overrides any helpers configured at the system/
 > machine-wide level.
 
-[rename-pr]: https://github.com/GitCredentialManager/git-credential-manager/pull/541
+[rename-pr]: https://github.com/git-ecosystem/git-credential-manager/pull/541
 [rename-blog]: https://github.blog/2022-04-07-git-credential-manager-authentication-for-everyone/#universal-git-authentication
-[gcm-org]: https://github.com/GitCredentialManager
-[rename-ver]: https://github.com/GitCredentialManager/git-credential-manager/releases
+[gcm-org]: https://github.com/git-ecosystem
+[rename-ver]: https://github.com/git-ecosystem/git-credential-manager/releases/tag/v2.0.877
 [git-windows]: https://git-scm.com/download/win
 [gcm-latest]: https://aka.ms/gcm/latest
 [warnings]: #rename-transition
 [win-standalone-instr]: ../README.md#standalone-installation
+[instructions]: #how-to-update
+[no-symlink-ver]: https://github.com/git-ecosystem/git-credential-manager/releases/tag/v2.3.0
